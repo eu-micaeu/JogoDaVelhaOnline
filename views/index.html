@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/index.css">
+    <title>Jogo da Velha Online</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Jogo da Velha Online</h1>
+        <div id="board" class="board">
+            <!-- Grid cells will be dynamically added here using JavaScript -->
+        </div>
+        <div id="result" class="result"></div>
+        <button id="resetBtn" class="reset-btn" onclick="resetGame()">Reiniciar Jogo</button>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDAtZRFZXt-1H_trwymC6IUE1RbK_VzInE",
+            authDomain: "jogodavelhaonline-bbc8e.firebaseapp.com",
+            databaseURL: "https://jogodavelhaonline-bbc8e-default-rtdb.firebaseio.com",
+            projectId: "jogodavelhaonline-bbc8e",
+            storageBucket: "jogodavelhaonline-bbc8e.appspot.com",
+            messagingSenderId: "139484916596",
+            appId: "1:139484916596:web:63b109b1d2ad630e0ada21",
+            measurementId: "G-WG1HKRVJ08"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = app.database();
+        const gameRef = database.ref('games/game1');
+
+        let currentPlayer = 'X';
+        let gameBoard = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = true;
+
+        gameRef.on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                gameBoard = data.board;
+                currentPlayer = data.currentPlayer;
+
+                // Atualize a interface do usuário com base no estado recebido
+                updateBoardUI();
+
+                if (checkWinner()) {
+                    document.getElementById('result').innerText = `Jogador ${currentPlayer} venceu!`;
+                    gameActive = false;
+                } else if (isBoardFull()) {
+                    document.getElementById('result').innerText = 'Empate! O jogo terminou.';
+                    gameActive = false;
+                }
+            }
+        });
+
+        function handleCellClick(index) {
+            if (!gameActive || gameBoard[index] !== '') {
+                return;
+            }
+
+            gameBoard[index] = currentPlayer;
+            document.getElementById('board').children[index].innerText = currentPlayer;
+
+            if (checkWinner()) {
+                document.getElementById('result').innerText = `Jogador ${currentPlayer} venceu!`;
+                gameActive = false;
+            } else if (isBoardFull()) {
+                document.getElementById('result').innerText = 'Empate! O jogo terminou.';
+                gameActive = false;
+            } else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            }
+
+            // Atualize o estado do jogo no Firebase
+            updateFirebaseGameState();
+        }
+
+        function updateFirebaseGameState() {
+            gameRef.set({
+                currentPlayer: currentPlayer,
+                board: gameBoard
+            });
+        }
+
+        function checkWinner() {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]             // Diagonals
+            ];
+
+            for (const pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (gameBoard[a] !== '' && gameBoard[a] === gameBoard[b] && gameBoard[b] === gameBoard[c]) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function isBoardFull() {
+            return !gameBoard.includes('');
+        }
+
+        function resetGame() {
+            currentPlayer = 'X';
+            gameBoard = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+
+            document.getElementById('result').innerText = '';
+
+            const cells = document.getElementById('board').children;
+            for (let i = 0; i < cells.length; i++) {
+                cells[i].innerText = '';
+            }
+
+            // Reinicie o estado do jogo no Firebase
+            updateFirebaseGameState();
+        }
+
+        function updateBoardUI() {
+            const cells = document.getElementById('board').children;
+            for (let i = 0; i < cells.length; i++) {
+                cells[i].innerText = gameBoard[i];
+            }
+        }
+
+        // Dynamically create the game board cells
+        const boardElement = document.getElementById('board');
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            cell.addEventListener('click', () => handleCellClick(i));
+            boardElement.appendChild(cell);
+        }
+    </script>
+</body>
+
+</html>
